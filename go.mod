@@ -1,4 +1,4 @@
-module example
+module github.com/scbt-ecom/slogging
 
 go 1.22
 
