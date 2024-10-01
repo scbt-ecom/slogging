@@ -68,7 +68,7 @@ func NewLogger(opts ...LoggerOption) *Logger {
 		l = New(stdHandler)
 	} else {
 		graylogHandler := Option{
-			Level:     cfg.Level,
+			Level:     cfg.InGraylog.level,
 			Writer:    cfg.InGraylog.w,
 			AddSource: true,
 			Converter: DefaultConverter,
