@@ -1,22 +1,47 @@
 package main
 
-//func main() {
-//	time.Sleep(1 * time.Second)
-//	log := abc.NewLogger(
-//		abc.SetLevel("debug"),
-//		abc.InGraylog("graylog:12201", "debug", "application_name"),
-//		abc.SetDefault(true),
-//	)
-//
-//	tracemw := abc.HTTPTraceMiddleware(log)
-//
-//	http.HandleFunc("/", tracemw(helloWorld))
-//
-//	err := http.ListenAndServe(":8080", nil)
-//	if err != nil {
-//		log.Info("лол почему?")
-//	}
-//}
+import (
+	"errors"
+	"github.com/scbt-ecom/slogging"
+	"log/slog"
+	"net/http"
+	"time"
+)
+
+func main() {
+	time.Sleep(1 * time.Second)
+	log := abc.NewLogger(
+		abc.SetLevel("debug"),
+		abc.InGraylog("graylog:12201", "debug", "application_name"),
+		abc.SetDefault(true),
+	)
+
+	tracemw := abc.HTTPTraceMiddleware(log)
+
+	http.HandleFunc("/", tracemw(helloWorld))
+
+	slogging.L(ctx).Info("example log message",
+		slogging.ErrAttr(errors.New("example error message")),
+		slogging.StringAttr("hello", "world"),
+		slogging.IntAttr("bye", 12),
+		slogging.AnyAttr("data", object),
+		slogging.FloatAttr("bye", 14.88),
+		slogging.TimeAttr("timestamp", time.Now()),
+	)
+
+	ctx = slogging.ContextWithLogger(ctx, slog.Default())
+
+	log := slogging.L(ctx).With(
+		slogging.StringAttr("module", "keycloak"))
+
+	ctx = slogging.ContextWithLogger(ctx, log)
+
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Info("лол почему?")
+	}
+}
+
 //
 //type TestStruct struct {
 //	A string
