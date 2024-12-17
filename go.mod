@@ -13,6 +13,7 @@ require (
 )
 
 require (
+	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/samber/lo v1.44.0 // indirect
 	golang.org/x/net v0.26.0 // indirect
 	golang.org/x/sys v0.21.0 // indirect

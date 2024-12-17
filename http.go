@@ -2,6 +2,7 @@ package slogging
 
 import (
 	"context"
+	"github.com/gorilla/mux"
 	"log/slog"
 	"net/http"
 )
@@ -21,6 +22,22 @@ func HTTPTraceMiddleware(logger *slog.Logger) HTTPMiddlewareFunc {
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		}
+	}
+}
+
+func MuxHTTPTraceMiddleware(logger *slog.Logger) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			traceId := r.Header.Get(xb3traceid)
+			if traceId == "" {
+				traceId = generateTraceId()
+			}
+
+			ctx := ContextWithLogger(r.Context(), logger.With(StringAttr(xb3traceid, traceId)))
+			ctx = context.WithValue(ctx, xb3traceid, traceId)
+
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
 	}
 }
 

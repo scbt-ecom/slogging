@@ -63,6 +63,12 @@ log := slogging.NewLogger(
 tracemw := slogging.HTTPTraceMiddleware(log)
 
 http.HandleFunc("/", tracemw(helloWorld))
+
+// mux example
+rules := r.Path("/rules").Subrouter()
+rules.Handle("/", ruleGetExampleHandler)
+
+rules.Use(slogging.MuxHTTPTraceMiddleware(log))
 ```
 
 ### GRPC Middleware ###
