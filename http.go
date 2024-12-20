@@ -2,6 +2,7 @@ package slogging
 
 import (
 	"context"
+	"github.com/gin-gonic/gin"
 	"github.com/gorilla/mux"
 	"log/slog"
 	"net/http"
@@ -38,6 +39,21 @@ func MuxHTTPTraceMiddleware(logger *slog.Logger) mux.MiddlewareFunc {
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
+	}
+}
+
+func GinHTTPTraceMiddleware(logger *slog.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		traceId := c.GetHeader(xb3traceid)
+		if traceId == "" {
+			traceId = generateTraceId()
+		}
+
+		ctx := ContextWithLogger(c.Request.Context(), logger.With(StringAttr(xb3traceid, traceId)))
+		ctx = context.WithValue(ctx, xb3traceid, traceId)
+
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
 	}
 }
 
