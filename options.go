@@ -38,12 +38,6 @@ func WithSource(with bool) LoggerOption {
 	}
 }
 
-func SetJSONFormat(set bool) LoggerOption {
-	return func(o *LoggerConfig) {
-		o.IsJSON = set
-	}
-}
-
 func SetDefault(set bool) LoggerOption {
 	return func(o *LoggerConfig) {
 		o.SetDefault = set

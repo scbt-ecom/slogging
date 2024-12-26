@@ -25,7 +25,6 @@ type gelfData struct {
 const (
 	defaultLevel      = LevelInfo
 	defaultWithSource = true
-	defaultIsJSON     = true
 	defaultSetDefault = true
 )
 
@@ -33,14 +32,12 @@ const (
 // InGraylog()
 // SetLevel()
 // WithSource()
-// SetJSONFormat()
 // SetDefault()
 func NewLogger(opts ...LoggerOption) *Logger {
 
 	cfg := &LoggerConfig{
 		Level:      defaultLevel,
 		WithSource: defaultWithSource,
-		IsJSON:     defaultIsJSON,
 		SetDefault: defaultSetDefault,
 		InGraylog:  nil,
 	}
@@ -57,12 +54,7 @@ func NewLogger(opts ...LoggerOption) *Logger {
 		Level:     cfg.Level,
 	}
 
-	switch cfg.IsJSON {
-	case true:
-		stdHandler = NewJSONHandler(os.Stdout, handlerOpts)
-	default:
-		stdHandler = NewTextHandler(os.Stdout, handlerOpts)
-	}
+	stdHandler = NewTextHandler(os.Stdout, handlerOpts)
 
 	if cfg.InGraylog == nil {
 		l = New(stdHandler)
@@ -70,11 +62,12 @@ func NewLogger(opts ...LoggerOption) *Logger {
 		graylogHandler := Option{
 			Level:     cfg.InGraylog.level,
 			Writer:    cfg.InGraylog.w,
-			AddSource: true,
 			Converter: DefaultConverter,
 		}.NewGraylogHandler()
 
-		graylogHandler = graylogHandler.WithAttrs([]Attr{slog.String("container_name", cfg.InGraylog.containerName)})
+		graylogHandler = graylogHandler.WithAttrs([]Attr{
+			slog.String("container_name", cfg.InGraylog.containerName)},
+		)
 
 		l = New(slogmulti.Fanout(stdHandler, graylogHandler))
 	}

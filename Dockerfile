@@ -1,4 +1,4 @@
-FROM registry.sovcombank.group/web-ecom/golang-1.22-alpine-certs:latest AS builder
+FROM registry.sovcombank.group/web-ecom/golang-1.23-alpine-certs:latest AS builder
 WORKDIR /usr/local/src
 #RUN apk --no-cache add curl tar
 

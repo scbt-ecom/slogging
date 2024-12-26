@@ -3,6 +3,7 @@ package slogging
 import (
 	"golang.org/x/exp/constraints"
 	"log/slog"
+	"reflect"
 	"time"
 )
 
@@ -37,7 +38,7 @@ func FloatAttr[T constraints.Float](key string, value T) Attr {
 }
 
 func TimeAttr(key string, time time.Time) Attr {
-	return slog.String(key, time.String())
+	return slog.String(key, time.Format("2006-01-02 15:04:05"))
 }
 
 func ErrAttr(err error) Attr {
@@ -49,5 +50,11 @@ func StringAttr(key string, value string) Attr {
 }
 
 func AnyAttr(key string, s interface{}) Attr {
+	v := reflect.ValueOf(s)
+
+	if v.Kind() == reflect.Ptr && !v.IsNil() {
+		s = v.Elem().Interface()
+	}
+
 	return slog.Any(key, s)
 }
