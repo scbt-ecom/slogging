@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/Graylog2/go-gelf/gelf"
 	slogcommon "github.com/samber/slog-common"
-	sloggraylog "github.com/samber/slog-graylog/v2"
 	"log/slog"
 	"os"
 	"strings"
@@ -34,15 +33,11 @@ type Option struct {
 
 func (o Option) NewGraylogHandler() slog.Handler {
 	if o.Level == nil {
-		o.Level = slog.LevelDebug
+		o.Level = LevelDebug
 	}
 
 	if o.Writer == nil {
 		panic("missing graylog connections")
-	}
-
-	if o.Converter == nil {
-		o.Converter = DefaultConverter
 	}
 
 	if o.AttrFromContext == nil {
@@ -120,32 +115,6 @@ func short(record *slog.Record) string {
 	}
 
 	return msg
-}
-
-func DefaultConverter(addSource bool, replaceAttr func(groups []string, a slog.Attr) slog.Attr, loggerAttr []slog.Attr, groups []string, record *slog.Record) (extra map[string]any) {
-	// aggregate all attributes
-	attrs := slogcommon.AppendRecordAttrsToAttrs(loggerAttr, groups, record)
-
-	// developer formatters
-	if addSource {
-		attrs = append(attrs, slogcommon.Source(sloggraylog.SourceKey, record))
-	}
-	attrs = slogcommon.ReplaceAttrs(replaceAttr, []string{}, attrs...)
-	attrs = slogcommon.RemoveEmptyAttrs(attrs)
-
-	// handler formatter
-	extra = slogcommon.AttrsToMap(attrs...)
-
-	for _, errorKey := range sloggraylog.ErrorKeys {
-		if v, ok := extra[errorKey]; ok {
-			if err, ok := v.(error); ok {
-				extra[errorKey] = slogcommon.FormatError(err)
-				break
-			}
-		}
-	}
-
-	return extra
 }
 
 const (

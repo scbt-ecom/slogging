@@ -25,7 +25,6 @@ type (
 
 var (
 	New            = slog.New
-	NewJSONHandler = slog.NewJSONHandler
 	NewTextHandler = slog.NewTextHandler
 )
 

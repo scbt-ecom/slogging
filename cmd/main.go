@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"github.com/scbt-ecom/slogging"
 	"log/slog"
 	"net/http"
@@ -22,21 +21,6 @@ func main() {
 
 	http.HandleFunc("/", tracemw(helloWorld))
 
-	a := &TestStruct{
-		A: "das",
-		B: 231,
-		C: false,
-	}
-
-	abc := TestStruct{
-		A: "ddasas",
-		B: 1,
-		C: false,
-	}
-
-	var sad *TestStruct
-	fmt.Println(sad)
-
 	go func() {
 		for {
 			time.Sleep(5 * time.Second)
@@ -46,19 +30,16 @@ func main() {
 				slogging.IntAttr("bye", 12),
 				slogging.FloatAttr("bye", 14.88),
 				slogging.TimeAttr("time", time.Now()),
-				slogging.AnyAttr("asd", a),
-				slogging.AnyAttr("asddas", &a),
-				slogging.AnyAttr("abc", abc),
-				slogging.AnyAttr("abcabc", &abc),
-				slogging.AnyAttr("sad", sad),
-				slogging.AnyAttr("sadsad", &sad),
 			)
 		}
 	}()
 
+	ctx := slogging.Context()
+
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
-		log.Info("лол почему?")
+		log.Info("лол почему?",
+			slogging.ErrAttr(err))
 	}
 
 }

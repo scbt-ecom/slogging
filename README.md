@@ -29,7 +29,7 @@
 
 ## Getting ##
 ```bash
-go get -u github.com/scbt-ecom/slogging
+go get github.com/scbt-ecom/slogging@v1.0.0
 ```
 
 ## Initialization ##
@@ -104,4 +104,9 @@ ctx = slogging.ContextWithLogger(ctx, log)
 ```
 ctx = slogging.ContextWithLogger(ctx, slog.Default())
 // Передаем контекст дальше, вставится стандартный логгер без TraceID, зато с логированием в Graylog
+```
+
+## Создание контекста с логгером со случайным TraceID (полезно для тестов) ##
+```
+ctx := slogging.Context()
 ```

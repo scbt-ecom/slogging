@@ -3,6 +3,7 @@ package slogging
 import (
 	"context"
 	"github.com/Graylog2/go-gelf/gelf"
+	sloggraylog "github.com/samber/slog-graylog/v2"
 	slogmulti "github.com/samber/slog-multi"
 	"log/slog"
 	"os"
@@ -23,7 +24,7 @@ type gelfData struct {
 }
 
 const (
-	defaultLevel      = LevelInfo
+	defaultLevel      = LevelDebug
 	defaultWithSource = true
 	defaultSetDefault = true
 )
@@ -59,10 +60,12 @@ func NewLogger(opts ...LoggerOption) *Logger {
 	if cfg.InGraylog == nil {
 		l = New(stdHandler)
 	} else {
+		sloggraylog.SourceKey = "reference"
 		graylogHandler := Option{
 			Level:     cfg.InGraylog.level,
 			Writer:    cfg.InGraylog.w,
-			Converter: DefaultConverter,
+			Converter: sloggraylog.DefaultConverter,
+			AddSource: cfg.WithSource,
 		}.NewGraylogHandler()
 
 		graylogHandler = graylogHandler.WithAttrs([]Attr{

@@ -1,15 +1,10 @@
 package slogging
 
 import (
-	"crypto/rand"
-	"encoding/hex"
+	"github.com/google/uuid"
 )
 
 func generateTraceId() string {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		return ""
-	}
-
-	return hex.EncodeToString(bytes)
+	traceID := uuid.New()
+	return traceID.String()
 }
