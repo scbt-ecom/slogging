@@ -24,5 +24,9 @@ func L(ctx context.Context) *Logger {
 		return l
 	}
 
+	if traceId, ok := ctx.Value(xb3traceid).(string); ok {
+		return slog.Default().With(StringAttr(xb3traceid, traceId))
+	}
+
 	return slog.Default()
 }
