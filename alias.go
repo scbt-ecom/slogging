@@ -1,8 +1,12 @@
 package slogging
 
 import (
+	"bytes"
+	"encoding/json"
 	"golang.org/x/exp/constraints"
+	"io"
 	"log/slog"
+	"net/http"
 	"reflect"
 	"time"
 )
@@ -56,4 +60,58 @@ func AnyAttr(key string, s interface{}) Attr {
 	}
 
 	return slog.Any(key, s)
+}
+
+func ResponseAttr(r *http.Response, start time.Time) []any {
+	if r == nil {
+		slog.Error("response is nil")
+		return []any{}
+	}
+
+	var body []byte
+	if r.Body != nil {
+		body, _ = io.ReadAll(r.Body)
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
+	}
+
+	headers, _ := json.Marshal(r.Header)
+
+	return getReqAttrsAsAny([]Attr{
+		slog.String("url", r.Request.URL.String()),
+		slog.String("method", r.Request.Method),
+		slog.Int("statusCode", r.StatusCode),
+		slog.String("headers", string(headers)),
+		slog.String("body", string(body)),
+		slog.Duration("duration", time.Since(start)),
+	})
+}
+
+func RequestAttr(r *http.Request) []any {
+	if r == nil {
+		slog.Error("request is nil")
+		return []any{}
+	}
+
+	var body []byte
+	if r.Body != nil {
+		body, _ = io.ReadAll(r.Body)
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
+	}
+
+	headers, _ := json.Marshal(r.Header)
+
+	return getReqAttrsAsAny([]Attr{
+		slog.String("method", r.Method),
+		slog.String("url", r.URL.String()),
+		slog.String("headers", string(headers)),
+		slog.String("body", string(body)),
+	})
+}
+
+func getReqAttrsAsAny(reqAttrs []Attr) []any {
+	var args []any
+	for _, attr := range reqAttrs {
+		args = append(args, attr)
+	}
+	return args
 }

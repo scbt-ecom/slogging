@@ -29,7 +29,7 @@
 
 ## Getting ##
 ```bash
-go get github.com/scbt-ecom/slogging@v1.0.0
+go get github.com/scbt-ecom/slogging@v0.6.0
 ```
 
 ## Initialization ##
@@ -90,6 +90,41 @@ slogging.L(ctx).Info("example log message",
 		slogging.FloatAttr("bye", 14.88),
 		slogging.TimeAttr("timestamp", time.Now()),
 	)
+```
+## Использование логгера для вывода Request и Response ##
+```
+client := &http.Client{}
+ 
+    reqBody, _ := json.Marshal(map[string]string{
+        "title":  "foo",
+        "body":   "bar",
+        "userId": "1",
+    })
+ 
+    req, err := http.NewRequest("POST", "https://jsonplaceholder.typicode.com/posts", bytes.NewBuffer(reqBody))
+    if err != nil {
+        log.Fatalf("Error creating request: %v", err)
+    }
+ 
+    req.Header.Set("Content-Type", "application/json")
+ 
+    // Контекст с traceId
+    ctx := context.WithValue(context.Background(), "traceId", "12345")
+ 
+    // Логируем исходящий запрос
+    L(ctx).Info("Outgoing Request", RequestAttr(req)...)
+ 
+    start := time.Now()
+    resp, err := client.Do(req)
+    if err != nil {
+        L(ctx).Error("Request Failed", slog.String("error", err.Error()))
+        return
+    }
+    defer resp.Body.Close()
+ 
+    // Логируем входящий ответ
+    L(ctx).Info("Incoming Response", ResponseAttr(resp, time.Since(start))...)
+}
 ```
 ## Создание логгера с новыми полями для передачи дальше ##
 ```
