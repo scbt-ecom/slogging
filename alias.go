@@ -3,11 +3,13 @@ package slogging
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"golang.org/x/exp/constraints"
 	"io"
 	"log/slog"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -74,6 +76,10 @@ func ResponseAttr(r *http.Response, start time.Time) []any {
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 
+	authHeader := r.Header.Get("Authorization")
+	if authHeader != "" {
+		r.Header.Set("Authorization", checkHeaderAuth(authHeader))
+	}
 	headers, _ := json.Marshal(r.Header)
 
 	return getReqAttrsAsAny([]Attr{
@@ -98,6 +104,10 @@ func RequestAttr(r *http.Request) []any {
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 
+	authHeader := r.Header.Get("Authorization")
+	if authHeader != "" {
+		r.Header.Set("Authorization", checkHeaderAuth(authHeader))
+	}
 	headers, _ := json.Marshal(r.Header)
 
 	return getReqAttrsAsAny([]Attr{
@@ -108,10 +118,24 @@ func RequestAttr(r *http.Request) []any {
 	})
 }
 
+func checkHeaderAuth(header string) string {
+	split := strings.Split(header, " ")
+	if len(split) != 2 {
+		return header
+	}
+
+	authData := split[1]
+	if len(authData) >= 2 {
+		authData = authData[len(authData)-2:]
+	}
+
+	return fmt.Sprintf("%s ***%s", split[0], authData)
+}
+
 func getReqAttrsAsAny(reqAttrs []Attr) []any {
-	var args []any
-	for _, attr := range reqAttrs {
-		args = append(args, attr)
+	args := make([]any, len(reqAttrs))
+	for i, attr := range reqAttrs {
+		args[i] = attr
 	}
 	return args
 }
