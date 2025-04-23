@@ -29,7 +29,7 @@
 
 ## Getting ##
 ```bash
-go get github.com/scbt-ecom/slogging@v0.7.0
+go get github.com/scbt-ecom/slogging@v0.7.1
 ```
 
 ## Initialization ##
