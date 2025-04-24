@@ -82,13 +82,14 @@ func ResponseAttr(r *http.Response, start time.Time) []any {
 	}
 	headers, _ := json.Marshal(r.Header)
 
+	duration := time.Since(start)
 	return getReqAttrsAsAny([]Attr{
 		slog.String("url", r.Request.URL.String()),
 		slog.String("method", r.Request.Method),
 		slog.Int("statusCode", r.StatusCode),
 		slog.String("headers", string(headers)),
 		slog.String("body", string(body)),
-		slog.Duration("duration", time.Since(start)),
+		slog.Int64("duration", duration.Milliseconds()),
 	})
 }
 
