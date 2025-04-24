@@ -29,7 +29,7 @@
 
 ## Getting ##
 ```bash
-go get github.com/scbt-ecom/slogging@v0.7.0
+go get github.com/scbt-ecom/slogging@v0.7.1
 ```
 
 ## Initialization ##
@@ -112,7 +112,7 @@ client := &http.Client{}
     ctx := context.WithValue(context.Background(), "traceId", "12345")
  
     // Логируем исходящий запрос
-    L(ctx).Info("Outgoing Request", RequestAttr(req)...)
+    L(ctx).Info("Outgoing Request", slogging.RequestAttr(req)...)
  
     start := time.Now()
     resp, err := client.Do(req)
@@ -123,7 +123,7 @@ client := &http.Client{}
     defer resp.Body.Close()
  
     // Логируем входящий ответ
-    L(ctx).Info("Incoming Response", ResponseAttr(resp, time.Since(start))...)
+    L(ctx).Info("Incoming Response", slogging.ResponseAttr(resp, time.Since(start))...)
 }
 ```
 ## Создание логгера с новыми полями для передачи дальше ##
