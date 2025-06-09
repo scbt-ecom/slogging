@@ -6,16 +6,16 @@ import (
 	"log/slog"
 )
 
-type AMQPMiddlewareFunc func(amqp091.Delivery) context.Context
+type AMQPMiddlewareFunc func(context.Context, amqp091.Delivery) context.Context
 
 func AMQPTraceMiddleware(logger *slog.Logger) AMQPMiddlewareFunc {
-	return func(msg amqp091.Delivery) context.Context {
+	return func(baseCtx context.Context, msg amqp091.Delivery) context.Context {
 		traceId, ok := msg.Headers[xb3traceid].(string)
 		if !ok || traceId == "" {
 			traceId = generateTraceId()
 		}
 
-		ctx := ContextWithLogger(context.Background(), logger.With(StringAttr(xb3traceid, traceId)))
+		ctx := ContextWithLogger(baseCtx, logger.With(StringAttr(xb3traceid, traceId)))
 		ctx = context.WithValue(ctx, "traceId", traceId)
 
 		return ctx
