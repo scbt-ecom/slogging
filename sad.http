@@ -1,7 +1,0 @@
-GET http://localhost:8080/hello
-X-B3-Order: 127
-
-###
-### GET request to example server
-
-###

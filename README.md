@@ -16,12 +16,15 @@
 Был реализован утилитарный функционал для пакета slog, позволяющий создать fanout handler, так как slog не умел это из коробки, так же присутствует возможность гибкой настройки логгера как в стандартный вывод, так и в Graylog. Также был затронут UDP Batching, честно говоря я хотел переписать его с нуля, но когда побольше разобрался в этой теме, понял что он и так неплохо реализован, для этого был использован вспомогательный пакет slog-graylog. (https://github.com/samber/slog-graylog)  
 
 ## Сопоставление уровней пакета и Graylog ##
-| slog    | Graylog |
-|---------|---------|
-| Debug   | 7       |
-| Info    | 6       |
-| Warn    | 4       |
-| Error   | 3       |
+| slog  | Graylog |
+|-------|---------|
+| Debug | 7       |
+| Info  | 6       |
+| Warn  | 4       |
+| Error | 3       |
+| Fatal | 2       |
+
+
 
 Был рассмотрен вопрос добавления уровня Fatal с os.Exit(1), от реализации пришлось отказаться, как я считаю всех представленных уровней достаточно, а остальные лишь излишнее усложнение, к тому же разработчики пакета slog сами отказались от добавления этого уровня, и предложили писать os.Exit(1) там где это нужно (потерял ссылку на github issue). К тому же для реализации кастомного уровня необходима еще одна инкапсуляция из-за чего код может стать слишком сложным и поддерживаемым. В данный момент реализация представлена без лишней инкапсуляции.
 
@@ -29,7 +32,8 @@
 
 ## Getting ##
 ```bash
-go get github.com/scbt-ecom/slogging@v0.7.3
+go env -w GONOPROXY=github.com/scbt-ecom/*
+go get github.com/scbt-ecom/slogging@v1.0.0
 ```
 
 ## Initialization ##
@@ -50,34 +54,276 @@ log := slogging.NewLogger(
 | WithSource(params)  | Добавление к логам для записи в стандартный поток вывода полей, отвечающих за источник лога (функция, файл, строка)                                                                                                                | Дополнительные поля, отвечающие за источник лога отсутствуют в стандартном потоке вывода |
 | SetDefault(bool)    | В случае true, логгер будет установлен стандартным, то есть при вызове slog.Info например из любой точки программы, будет использован инициализированный логгер, если была включена отправка в Graylog, она тоже будет произведена | В случае false будет использован стандартный логгер slog.Default при slog.Info например  |
 
-## Обычное использование по шагам ##
-1) Инициализируем в main.go наш логгер со всеми надстройками
-2) Если нужен TraceID в запросе создаем Middleware/Interceptor для HTTP/AMQP/GRPC, логируем из контекста, передаем контекст всегда дальше по всем слоям вплоть до конца пути данных
-3) Если не нужен TraceID, либо ставим SetDefault(true) и логируем просто со slog.Info(), slog.Warn() etc. Либо также передаем инициализированный по всей программе, не используя Middleware/Interceptor
-
-### HTTP Middleware ###
-При использовании этой middleware, к каждому запросу автоматически будет ставится TraceID, логгер с новым контекстом будет лежать в req.Context(), так как передача логгера теперь в контексте
+---
+# Пример HTTP Middleware (Принимаем trace заголовок из HTTP запроса) #
+## Gin ##
 ```
-tracemw := slogging.HTTPTraceMiddleware(log)
+import (
+    "github.com/gin-gonic/gin"
+	ginsl "github.com/scbt-ecom/slogging/http/gin"
+)
 
-http.HandleFunc("/", tracemw(helloWorld))
+func main() {
+	sl := slogging.NewLogger(
+		slogging.InGraylog("localhost:12201", "debug", "application_name"),
+		slogging.SetDefault(true),
+		slogging.WithSource(true),
+		slogging.SetLevel("debug"))
 
-// mux example
-rules := r.Path("/rules").Subrouter()
-rules.Handle("/", ruleGetExampleHandler)
+    // Можем передать текущий сконфигурированный логгер
+	traceMW := ginsl.TraceMiddleware(sl.Logger)
+	
+	// Можем сконфигурировать и передать новый экземпляр логгера
+	// traceMW := ginsl.TraceMiddleware(sl.With("module", "gin-http"))
+	
+	// А можем дефолтный slog.Default(), актуально если доп конфигурация не требуется и при slogging.SetDefault(true)
+	// traceMW := ginsl.TraceMiddleware(slog.Default())
 
-rules.Use(slogging.MuxHTTPTraceMiddleware(log))
+	r := gin.New()
+
+	exGroup := r.Group("/example")
+	exGroup.Use(traceMW)
+
+	exGroup.POST("/action", actionHandler)
+}
+
+func actionHandler(c *gin.Context) {
+    // Теперь тут в c.Request.Context() контексте лежат trace заголовки ))
+	ctx := c.Request.Context()
+
+	slogging.L(ctx).Info("hello world =)")
+}
 ```
 
-### GRPC Middleware ###
+## Mux ##
 ```
-Возможность создать GRPC Interceptor присутствует, как только использую сразу сюда добавлю
+import (
+    "github.com/gorilla/mux"
+	muxsl "github.com/scbt-ecom/slogging/http/mux"
+)
+
+
+func main() {
+	sl := slogging.NewLogger(
+		slogging.InGraylog("localhost:12201", "debug", "application_name"),
+		slogging.SetDefault(true),
+		slogging.WithSource(true),
+		slogging.SetLevel("debug"))
+
+    // Можем передать текущий сконфигурированный логгер
+	traceMW := muxsl.TraceMiddleware(sl.Logger)
+	
+	// Можем сконфигурировать и передать новый экземпляр логгера
+	//traceMW := muxsl.TraceMiddleware(sl.With("module", "mux-http"))
+	
+	// А можем дефолтный slog.Default(), актуально если доп конфигурация не требуется и при slogging.SetDefault(true)
+	//traceMW := muxsl.TraceMiddleware(slog.Default())
+
+	r := mux.NewRouter()
+
+	exGroup := r.PathPrefix("/example").Subrouter()
+	exGroup.Use(traceMW)
+
+	exGroup.HandleFunc("/action", actionHandler)
+}
+
+func actionHandler(w http.ResponseWriter, r *http.Request) {
+    // Теперь тут в r.Context() контексте лежат trace заголовки ))
+	ctx := r.Context()
+
+
+	slogging.L(ctx).Info("hello world =)")
+}
 ```
 
-### AMQP Middleware ###
+## Native ##
 ```
-Возможность создать AMQP Middleware присутствует, как только использую сразу сюда добавлю
+import (
+    "net/http"
+	sl "github.com/scbt-ecom/slogging/http"
+)
+
+func main() {
+	l := slogging.NewLogger(
+		slogging.InGraylog("localhost:12201", "debug", "application_name"),
+		slogging.SetDefault(true),
+		slogging.WithSource(true),
+		slogging.SetLevel("debug"))
+
+    // Можем передать текущий сконфигурированный логгер
+	traceMW := sl.TraceMiddleware(l.Logger)
+	
+	// Можем сконфигурировать и передать новый экземпляр логгера
+	// traceMW := sl.TraceMiddleware(l.With("module", "http"))
+	
+	// А можем дефолтный slog.Default(), актуально если доп конфигурация не требуется и при slogging.SetDefault(true)
+	// traceMW := sl.TraceMiddleware(slog.Default())
+
+	http.HandleFunc("/example/action", traceMW(actionHandler))
+}
+
+func actionHandler(w http.ResponseWriter, r *http.Request) {
+    // Теперь тут в r.Context() контексте лежат trace заголовки ))
+	ctx := r.Context()
+
+	slogging.L(ctx).Info("hello world =)")
+}
 ```
+
+---
+
+# Пример AMQP Middleware (Принимаем trace заголовок из AMQP сообщения) #
+```
+import (
+    "github.com/rabbitmq/amqp091-go"
+	amqpsl "github.com/scbt-ecom/slogging/amqp"
+)
+
+type amqpIface interface {
+	receiveChan() <-chan amqp091.Delivery
+}
+
+func main() {
+	l := slogging.NewLogger(
+		slogging.InGraylog("localhost:12201", "debug", "application_name"),
+		slogging.SetDefault(true),
+		slogging.WithSource(true),
+		slogging.SetLevel("debug"))
+
+	var repo amqpIface
+
+	msgs := repo.receiveChan()
+
+	// Можем передать текущий сконфигурированный логгер
+	traceMW := amqpsl.TraceMiddleware(l.Logger)
+	
+	// Можем сконфигурировать и передать новый экземпляр логгера
+	// traceMW := amqpsl.TraceMiddleware(l.With("module", "http"))
+	
+	// А можем дефолтный slog.Default(), актуально если доп конфигурация не требуется и при slogging.SetDefault(true)
+	// traceMW := amqpsl.TraceMiddleware(slog.Default())
+
+	for msg := range msgs {
+	    // Первым параметром можем передавать существующий контекст, например с таймаутом, и на него наслоится trace заголовки
+	    // Итоговый контекст стал бы и с таймаутом и с trace заголовками
+	    // Если существующего нету можно передавать context.Backgroung()
+		ctx := traceMW(context.Background(), msg)
+
+        // Теперь тут в ctx лежит trace заголовок ))
+		slogging.L(ctx).Info("hello world =)")
+	}
+}
+```
+---
+
+# Пример GRPC Interceptor (Принимаем trace заголовок из GRPC сообщения) #
+```
+import (
+    grpcsl "github.com/scbt-ecom/slogging/grpc"
+	"google.golang.org/grpc"
+)
+
+type server struct {
+	pb.UnimplementedGreeterServer
+}
+
+func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloResponse, error) {
+	// Тут в контексте будет лежать trace заголовок
+	slogging.L(ctx).Info("hello world =')")
+
+	return &pb.HelloResponse{Greeting: "Hello " + in.GetName()}, nil
+}
+
+func main() {
+	l := slogging.NewLogger(
+		slogging.InGraylog("localhost:12201", "debug", "application_name"),
+		slogging.SetDefault(true),
+		slogging.WithSource(true),
+		slogging.SetLevel("debug"))
+
+	lis, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+    // Можем передать текущий сконфигурированный логгер
+	traceIC := grpcsl.TraceInterceptor(l.Logger)
+	
+	// Можем сконфигурировать и передать новый экземпляр логгера
+	//traceIC := grpcsl.TraceInterceptor(l.With("module", "grpc"))
+	
+	// А можем дефолтный slog.Default(), актуально если доп конфигурация не требуется и при slogging.SetDefault(true)
+	//traceIC := grpcsl.TraceInterceptor(slog.Default())
+
+	s := grpc.NewServer(
+		// Тут пробрасываем наш interceptor в сервер
+		grpc.UnaryInterceptor(traceIC))
+	pb.RegisterGreeterServer(s, &server{})
+
+	log.Printf("server listening at %v", lis.Addr())
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
+```
+---
+# Пример отправки trace заголовка по HTTP #
+```
+import (
+    sl "github.com/scbt-ecom/slogging/http"
+	"net/http"
+)
+
+// В контексте должно лежать trace поле
+func sendHTTP(ctx context.Context) {
+	req, _ := http.NewRequest("GET", "/", nil)
+	req := sl.TraceRequest(ctx, req)
+
+    // Отправится запрос где в заголовках будет trace заголовок
+	http.DefaultClient.Do(req)
+}
+```
+---
+# Пример отправки trace заголовка по AMQP #
+```
+import (
+    "github.com/rabbitmq/amqp091-go"
+	amqpsl "github.com/scbt-ecom/slogging/amqp"
+	"github.com/skbt-ecom/rabbitmq"
+)
+
+// Не пробрасывайте так connection, просто для примера
+// В контексте должно лежать trace поле
+func sendAMQP(ctx context.Context, conn *amqp091.Connection) {
+	ch, _ := conn.Channel()
+
+	// Передаем Headers пустые или с тем что вам нужно, старые значения сохранятся, сверху еще появится trace заголовок
+	headers := amqpsl.TraceHeaders(ctx, rabbitmq.Headers{
+		"phone": "89668548874",
+	})
+
+	// Отправится сообщение где в заголовках будет trace заголовок
+	rabbitmq.ProduceWithContext(context.Background(), ch, &exampleStruct{}, headers, "exchange", "key")
+}
+```
+---
+# Пример отправки trace метадаты по GRPC #
+```
+import (
+    grpcsl "github.com/scbt-ecom/slogging/grpc"
+)
+
+// В контексте должно лежать trace поле
+func sendGRPC(ctx context.Context, c pb.GreeterClient) {
+	ctx = grpcsl.TraceMetadata(ctx)
+
+	// Отправится trace заголовок в метадате
+	c.SayHello(ctx, &pb.HelloRequest{Name: defaultName})
+}
+```
+---
+
+
 
 ## Логирование из контекста с логгером ##
 В примере приведены также экстра поля для логирования в Graylog
@@ -91,6 +337,7 @@ slogging.L(ctx).Info("example log message",
 		slogging.TimeAttr("timestamp", time.Now()),
 	)
 ```
+---
 ## Использование логгера для вывода Request и Response ##
 ```
 client := &http.Client{}
@@ -126,6 +373,7 @@ client := &http.Client{}
     L(ctx).Info("Incoming Response", slogging.ResponseAttr(resp, time.Since(start))...)
 }
 ```
+---
 ## Создание логгера с новыми полями для передачи дальше ##
 ```
 log := slogging.L(ctx).With(
@@ -134,14 +382,21 @@ log := slogging.L(ctx).With(
 ctx = slogging.ContextWithLogger(ctx, log)
 // Передаем контекст дальше, TraceID в нем сохранится, в логгере добавится дополнительное поле
 ```
-
-## Создание контекста с логгером ##
-```
-ctx = slogging.ContextWithLogger(ctx, slog.Default())
-// Передаем контекст дальше, вставится стандартный логгер без TraceID, зато с логированием в Graylog
-```
-
+---
 ## Создание контекста с логгером со случайным TraceID (полезно для тестов) ##
 ```
 ctx := slogging.Context()
+```
+---
+
+## Функция trace exemplar для Prometheus ##
+```
+import (
+    "github.com/scbt-ecom/slogging/prometheus"
+)
+
+func main() {
+    traceFunc := prometheus.TraceExemplar
+}
+
 ```

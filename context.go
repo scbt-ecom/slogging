@@ -2,32 +2,32 @@ package slogging
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"log/slog"
 )
 
 type ctxLogger struct{}
 
 func ContextWithLogger(ctx context.Context, l *SLogger) context.Context {
-
 	return context.WithValue(ctx, ctxLogger{}, l)
+}
+
+func GenerateTraceID() string {
+	traceID := uuid.New()
+	return traceID.String()
 }
 
 func Context() context.Context {
 	traceID := GenerateTraceID()
 
-	l := slog.Default().With(StringAttr(XB3TraceID, traceID))
+	l := &SLogger{slog.Default().With(StringAttr(XB3TraceID, traceID))}
 	ctx := context.WithValue(context.Background(), XB3TraceID, traceID)
 	return context.WithValue(ctx, ctxLogger{}, l)
 }
 
 func L(ctx context.Context) *SLogger {
 	if l, ok := ctx.Value(ctxLogger{}).(*SLogger); ok {
-		order := l.GetOrder()
-		if order == withoutRequestsOrder {
-			return l
-		}
-
-		return &SLogger{Logger: l.With(IntAttr(XB3Order, order))}
+		return l
 	}
 
 	traceID, ok := ctx.Value(XB3TraceID).(string)

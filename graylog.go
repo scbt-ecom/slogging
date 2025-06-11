@@ -120,7 +120,6 @@ func short(record *slog.Record) string {
 
 const (
 	XB3TraceID = "X-B3-TraceId"
-	XB3Order   = "X-B3-Order"
 )
 
 var LogLevels = map[slog.Level]int32{
