@@ -3,24 +3,23 @@ package slogging
 import (
 	"context"
 	"github.com/rabbitmq/amqp091-go"
-	"log/slog"
 )
 
 type AMQPMiddlewareFunc func(amqp091.Delivery) context.Context
 
-func AMQPTraceMiddleware(logger *slog.Logger) AMQPMiddlewareFunc {
-	return func(msg amqp091.Delivery) context.Context {
-		traceId, ok := msg.Headers[xb3traceid].(string)
-		if !ok || traceId == "" {
-			traceId = generateTraceId()
-		}
-
-		ctx := ContextWithLogger(context.Background(), logger.With(StringAttr(xb3traceid, traceId)))
-		ctx = context.WithValue(ctx, "traceId", traceId)
-
-		return ctx
-	}
-}
+//func AMQPTraceMiddleware(l *Logger) AMQPMiddlewareFunc {
+//	return func(msg amqp091.Delivery) context.Context {
+//		traceID, ok := msg.Headers[XB3TraceID].(string)
+//		if !ok || traceID == "" {
+//			traceID = GenerateTraceID()
+//		}
+//
+//		ctx := ContextWithLogger(context.Background(), &SLogger{l.With(StringAttr(XB3TraceID, traceID))})
+//		ctx = context.WithValue(ctx, XB3TraceID, traceID)
+//
+//		return ctx
+//	}
+//}
 
 // example
 //func ExampleAMQPTracing() {
@@ -47,11 +46,11 @@ func AMQPTraceMiddleware(logger *slog.Logger) AMQPMiddlewareFunc {
 //}
 
 func AMQPTableWithTraceHeaders(ctx context.Context, table amqp091.Table) amqp091.Table {
-	traceId, ok := ctx.Value("traceId").(string)
-	if !ok || traceId == "" {
-		traceId = generateTraceId()
+	traceID, ok := ctx.Value(XB3TraceID).(string)
+	if !ok || traceID == "" {
+		traceID = GenerateTraceID()
 	}
 
-	table[xb3traceid] = traceId
+	table[XB3TraceID] = traceID
 	return table
 }

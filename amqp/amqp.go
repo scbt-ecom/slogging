@@ -1,0 +1,36 @@
+package amqp
+
+import (
+	"context"
+	"github.com/rabbitmq/amqp091-go"
+	"github.com/scbt-ecom/slogging"
+	"github.com/skbt-ecom/rabbitmq"
+)
+
+func TraceMiddleware(l *slogging.SLogger) func(context.Context, amqp091.Delivery) context.Context {
+	return func(baseCtx context.Context, msg amqp091.Delivery) context.Context {
+		traceID, ok := msg.Headers[slogging.XB3TraceID].(string)
+		if !ok || traceID == "" {
+			traceID = slogging.GenerateTraceID()
+		}
+
+		newL := l.Logger.With(slogging.StringAttr(slogging.XB3TraceID, traceID))
+		sl := &slogging.SLogger{Logger: newL}
+
+		// TODO:
+		ctx := slogging.ContextWithLogger(baseCtx, sl, 3123123)
+		ctx = context.WithValue(ctx, slogging.XB3TraceID, traceID)
+
+		return ctx
+	}
+}
+
+func GetTraceHeaders(ctx context.Context, headers rabbitmq.Headers) rabbitmq.Headers {
+	traceID, ok := ctx.Value(slogging.XB3TraceID).(string)
+	if !ok || traceID == "" {
+		traceID = slogging.GenerateTraceID()
+	}
+
+	headers[slogging.XB3TraceID] = traceID
+	return headers
+}

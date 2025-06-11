@@ -4,7 +4,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func generateTraceId() string {
+func GenerateTraceID() string {
 	traceID := uuid.New()
 	return traceID.String()
 }

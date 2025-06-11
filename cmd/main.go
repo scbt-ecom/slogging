@@ -1,8 +1,11 @@
 package main
 
 import (
-	"errors"
+	"context"
+	"github.com/gin-gonic/gin"
 	"github.com/scbt-ecom/slogging"
+	amqpmw "github.com/scbt-ecom/slogging/amqp"
+	ginmw "github.com/scbt-ecom/slogging/http/gin"
 	"log/slog"
 	"net/http"
 	"time"
@@ -12,42 +15,38 @@ func main() {
 	time.Sleep(1 * time.Second)
 	log := slogging.NewLogger(
 		slogging.SetLevel("debug"),
-		slogging.InGraylog("graylog:12201", "debug", "application_name"),
+		slogging.InGraylog("localhost:12201", "debug", "application_name"),
 		slogging.WithSource(true),
 		slogging.SetDefault(true),
 	)
 
-	tracemw := slogging.HTTPTraceMiddleware(log)
+	traceMW := ginmw.TraceMiddleware(log)
 
-	http.HandleFunc("/", tracemw(helloWorld))
+	amqpTraceMW := amqpmw.TraceMiddleware(log)
 
-	go func() {
-		for {
-			time.Sleep(5 * time.Second)
-			log.Info("example log message",
-				slogging.ErrAttr(errors.New("example error message")),
-				slogging.StringAttr("hello", "world"),
-				slogging.IntAttr("bye", 12),
-				slogging.FloatAttr("bye", 14.88),
-				slogging.TimeAttr("time", time.Now()),
-			)
-		}
-	}()
+	r := gin.New()
+	r.Use(traceMW)
 
-	ctx := slogging.Context()
+	r.GET("/hello", ginHelloWorld)
 
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		log.Info("лол почему?",
-			slogging.ErrAttr(err))
-	}
-
+	r.Run(":8080")
 }
 
 type TestStruct struct {
 	A string
 	B int
 	C bool
+}
+
+func ginHelloWorld(c *gin.Context) {
+	ctx := c.Request.Context()
+	slogging.L(ctx).Info("hello world")
+	slogging.L(ctx).Error("bye bye world")
+
+	slog.Info("so good")
+	slogging.L(context.Background()).Error("empty context test")
+
+	//slogging.L(ctx).Fatal("fatal test = )")
 }
 
 func helloWorld(w http.ResponseWriter, r *http.Request) {

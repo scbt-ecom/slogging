@@ -18,6 +18,7 @@ const (
 	LevelInfo  = slog.LevelInfo
 	LevelWarn  = slog.LevelWarn
 	LevelError = slog.LevelError
+	LevelFatal = slog.Level(12)
 )
 
 type (

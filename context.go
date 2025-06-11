@@ -7,26 +7,37 @@ import (
 
 type ctxLogger struct{}
 
-func ContextWithLogger(ctx context.Context, l *slog.Logger) context.Context {
+func ContextWithLogger(ctx context.Context, l *SLogger) context.Context {
+
 	return context.WithValue(ctx, ctxLogger{}, l)
 }
 
 func Context() context.Context {
-	traceID := generateTraceId()
+	traceID := GenerateTraceID()
 
-	l := slog.Default().With(StringAttr(xb3traceid, traceID))
-	ctx := context.WithValue(context.Background(), xb3traceid, traceID)
+	l := slog.Default().With(StringAttr(XB3TraceID, traceID))
+	ctx := context.WithValue(context.Background(), XB3TraceID, traceID)
 	return context.WithValue(ctx, ctxLogger{}, l)
 }
 
-func L(ctx context.Context) *Logger {
-	if l, ok := ctx.Value(ctxLogger{}).(*Logger); ok {
-		return l
+func L(ctx context.Context) *SLogger {
+	if l, ok := ctx.Value(ctxLogger{}).(*SLogger); ok {
+		order := l.GetOrder()
+		if order == withoutRequestsOrder {
+			return l
+		}
+
+		return &SLogger{Logger: l.With(IntAttr(XB3Order, order))}
 	}
 
-	if traceId, ok := ctx.Value(xb3traceid).(string); ok {
-		return slog.Default().With(StringAttr(xb3traceid, traceId))
+	traceID, ok := ctx.Value(XB3TraceID).(string)
+	if ok {
+		return &SLogger{
+			Logger: slog.Default().With(StringAttr(XB3TraceID, traceID)),
+		}
 	}
 
-	return slog.Default()
+	return &SLogger{
+		Logger: slog.Default(),
+	}
 }

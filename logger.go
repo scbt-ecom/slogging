@@ -7,6 +7,7 @@ import (
 	slogmulti "github.com/samber/slog-multi"
 	"log/slog"
 	"os"
+	"time"
 )
 
 type LoggerConfig struct {
@@ -34,7 +35,7 @@ const (
 // SetLevel()
 // WithSource()
 // SetDefault()
-func NewLogger(opts ...LoggerOption) *Logger {
+func NewLogger(opts ...LoggerOption) *SLogger {
 
 	cfg := &LoggerConfig{
 		Level:      defaultLevel,
@@ -53,8 +54,15 @@ func NewLogger(opts ...LoggerOption) *Logger {
 	handlerOpts := &HandlerOptions{
 		AddSource: cfg.WithSource,
 		Level:     cfg.Level,
+		//ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+		//	if a.Key == "X-B3-Order" && len(groups) == 0 {
+		//		return slog.Attr{} // Удаляем поле
+		//	}
+		//	return a
+		//},
 	}
 
+	//stdHandler = slog.NewJSONHandler(os.Stdout, handlerOpts)
 	stdHandler = NewTextHandler(os.Stdout, handlerOpts)
 
 	if cfg.InGraylog == nil {
@@ -79,16 +87,19 @@ func NewLogger(opts ...LoggerOption) *Logger {
 		slog.SetDefault(l)
 	}
 
-	return l
+	return &SLogger{
+		Logger: l,
+	}
 }
 
 type LoggerOption func(*LoggerConfig)
 
-func WithAttrs(ctx context.Context, attrs ...Attr) *Logger {
-	logger := L(ctx)
-	for _, attr := range attrs {
-		logger = logger.With(attr)
-	}
+type SLogger struct {
+	*slog.Logger
+}
 
-	return logger
+func (l *SLogger) Fatal(msg string, args ...any) {
+	l.Log(context.Background(), LevelFatal, msg, args...)
+	time.Sleep(1 * time.Second)
+	os.Exit(1)
 }

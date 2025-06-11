@@ -65,6 +65,7 @@ type GraylogHandler struct {
 
 func (h *GraylogHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return level >= h.option.Level.Level()
+	//return level >= h.option.Level.Level() || level == LevelFatal
 }
 
 func (h *GraylogHandler) Handle(ctx context.Context, record slog.Record) error {
@@ -118,7 +119,8 @@ func short(record *slog.Record) string {
 }
 
 const (
-	xb3traceid = "X-B3-TraceId"
+	XB3TraceID = "X-B3-TraceId"
+	XB3Order   = "X-B3-Order"
 )
 
 var LogLevels = map[slog.Level]int32{
@@ -126,4 +128,5 @@ var LogLevels = map[slog.Level]int32{
 	slog.LevelInfo:  6,
 	slog.LevelWarn:  4,
 	slog.LevelError: 3,
+	LevelFatal:      2,
 }
