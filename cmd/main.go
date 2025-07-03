@@ -2,27 +2,23 @@ package main
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
-	"github.com/scbt-ecom/slogging"
-	amqpmw "github.com/scbt-ecom/slogging/amqp"
-	ginmw "github.com/scbt-ecom/slogging/http/gin"
+	"log"
 	"log/slog"
 	"net/http"
-	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/scbt-ecom/slogging"
+	http2 "github.com/scbt-ecom/slogging/http"
+	ginmw "github.com/scbt-ecom/slogging/http/gin"
 )
 
 func main() {
-	time.Sleep(1 * time.Second)
-	log := slogging.NewLogger(
-		slogging.SetLevel("debug"),
-		slogging.InGraylog("localhost:12201", "debug", "application_name"),
-		slogging.WithSource(true),
-		slogging.SetDefault(true),
-	)
+	opts := slogging.NewOptions().InGraylog("localhost:12201", "application_name")
+	sl := slogging.NewLogger(opts)
 
-	traceMW := ginmw.TraceMiddleware(log)
+	traceMW := ginmw.TraceMiddleware(log.Logger)
 
-	amqpTraceMW := amqpmw.TraceMiddleware(log)
+	//amqpTraceMW := amqpmw.TraceMiddleware(log.Logger)
 
 	r := gin.New()
 	r.Use(traceMW)
@@ -44,6 +40,7 @@ func ginHelloWorld(c *gin.Context) {
 	slogging.L(ctx).Error("bye bye world")
 
 	slog.Info("so good")
+	slogging.L(ctx).Fatal("fail")
 	slogging.L(context.Background()).Error("empty context test")
 
 	//slogging.L(ctx).Fatal("fatal test = )")
@@ -59,7 +56,7 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 			slogging.ErrAttr(err))
 	}
 
-	req = slogging.RequestWithTraceHeaders(r.Context(), req)
+	req = http2.TraceRequest(r.Context(), req)
 	log.Info("headers",
 		slogging.StringAttr("xb-3trace", req.Header.Get("X-B3-TraceId")))
 

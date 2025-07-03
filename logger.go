@@ -2,20 +2,20 @@ package slogging
 
 import (
 	"context"
-	"github.com/Graylog2/go-gelf/gelf"
-	sloggraylog "github.com/samber/slog-graylog/v2"
-	slogmulti "github.com/samber/slog-multi"
 	"log/slog"
 	"os"
 	"time"
+
+	"github.com/Graylog2/go-gelf/gelf"
+	sloggraylog "github.com/samber/slog-graylog/v2"
+	slogmulti "github.com/samber/slog-multi"
 )
 
-type LoggerConfig struct {
-	Level      Level
-	WithSource bool
-	IsJSON     bool
-	SetDefault bool
-	InGraylog  *gelfData
+type LoggerOptions struct {
+	level      Level
+	withSource bool
+	setDefault bool
+	inGraylog  *gelfData
 }
 
 type gelfData struct {
@@ -35,55 +35,36 @@ const (
 // SetLevel()
 // WithSource()
 // SetDefault()
-func NewLogger(opts ...LoggerOption) *SLogger {
-
-	cfg := &LoggerConfig{
-		Level:      defaultLevel,
-		WithSource: defaultWithSource,
-		SetDefault: defaultSetDefault,
-		InGraylog:  nil,
-	}
-
-	for _, opt := range opts {
-		opt(cfg)
-	}
-
+func NewLogger(opts *LoggerOptions) *SLogger {
 	var l *Logger
 
 	var stdHandler Handler
 	handlerOpts := &HandlerOptions{
-		AddSource: cfg.WithSource,
-		Level:     cfg.Level,
-		//ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-		//	if a.Key == "X-B3-Order" && len(groups) == 0 {
-		//		return slog.Attr{} // Удаляем поле
-		//	}
-		//	return a
-		//},
+		AddSource: opts.withSource,
+		Level:     opts.level,
 	}
 
-	//stdHandler = slog.NewJSONHandler(os.Stdout, handlerOpts)
 	stdHandler = NewTextHandler(os.Stdout, handlerOpts)
 
-	if cfg.InGraylog == nil {
+	if opts.inGraylog == nil {
 		l = New(stdHandler)
 	} else {
 		sloggraylog.SourceKey = "reference"
 		graylogHandler := Option{
-			Level:     cfg.InGraylog.level,
-			Writer:    cfg.InGraylog.w,
+			Level:     slog.LevelDebug,
+			Writer:    opts.inGraylog.w,
 			Converter: sloggraylog.DefaultConverter,
-			AddSource: cfg.WithSource,
+			AddSource: opts.withSource,
 		}.NewGraylogHandler()
 
 		graylogHandler = graylogHandler.WithAttrs([]Attr{
-			slog.String("container_name", cfg.InGraylog.containerName)},
+			slog.String("container_name", opts.inGraylog.containerName)},
 		)
 
 		l = New(slogmulti.Fanout(stdHandler, graylogHandler))
 	}
 
-	if cfg.SetDefault {
+	if opts.setDefault {
 		slog.SetDefault(l)
 	}
 
@@ -91,8 +72,6 @@ func NewLogger(opts ...LoggerOption) *SLogger {
 		Logger: l,
 	}
 }
-
-type LoggerOption func(*LoggerConfig)
 
 type SLogger struct {
 	*slog.Logger

@@ -2,11 +2,12 @@ package slogging
 
 import (
 	"context"
-	"github.com/Graylog2/go-gelf/gelf"
-	slogcommon "github.com/samber/slog-common"
 	"log/slog"
 	"os"
 	"strings"
+
+	"github.com/Graylog2/go-gelf/gelf"
+	slogcommon "github.com/samber/slog-common"
 )
 
 type Converter func(addSource bool, replaceAttr func(groups []string, a slog.Attr) slog.Attr, loggerAttr []slog.Attr, groups []string, record *slog.Record) (extra map[string]any)
@@ -34,10 +35,6 @@ type Option struct {
 func (o Option) NewGraylogHandler() slog.Handler {
 	if o.Level == nil {
 		o.Level = LevelDebug
-	}
-
-	if o.Writer == nil {
-		panic("missing graylog connections")
 	}
 
 	if o.AttrFromContext == nil {

@@ -33,17 +33,13 @@
 ## Getting ##
 ```bash
 go env -w GONOPROXY=github.com/scbt-ecom/*
-go get github.com/scbt-ecom/slogging@v1.0.2
+go get github.com/scbt-ecom/slogging@v1.0.3
 ```
 
 ## Initialization ##
 ```bash
-log := slogging.NewLogger(
-    slogging.InGraylog({graylogURL}, {graylogLogLevel}, {container_name}),
-    slogging.SetLevel({logLevel}),
-    slogging.WithSource(true),
-    slogging.SetDefault(true),
-)
+opts := slogging.NewOptions().InGraylog("localhost:12201", "application_name")
+sl := slogging.NewLogger(opts)
 ```
 Важно: в примере представлены все возможные опции, если ничего не указывать выставятся стандартные
 ## Описание опций настройки ##
@@ -64,11 +60,8 @@ import (
 )
 
 func main() {
-	sl := slogging.NewLogger(
-		slogging.InGraylog("localhost:12201", "debug", "application_name"),
-		slogging.SetDefault(true),
-		slogging.WithSource(true),
-		slogging.SetLevel("debug"))
+	opts := slogging.NewOptions().InGraylog("localhost:12201", "application_name")
+	sl := slogging.NewLogger(opts)
 
     // Можем передать текущий сконфигурированный логгер
 	traceMW := ginsl.TraceMiddleware(sl.Logger)
@@ -104,11 +97,8 @@ import (
 
 
 func main() {
-	sl := slogging.NewLogger(
-		slogging.InGraylog("localhost:12201", "debug", "application_name"),
-		slogging.SetDefault(true),
-		slogging.WithSource(true),
-		slogging.SetLevel("debug"))
+	opts := slogging.NewOptions().InGraylog("localhost:12201", "application_name")
+	sl := slogging.NewLogger(opts)
 
     // Можем передать текущий сконфигурированный логгер
 	traceMW := muxsl.TraceMiddleware(sl.Logger)
@@ -144,11 +134,8 @@ import (
 )
 
 func main() {
-	l := slogging.NewLogger(
-		slogging.InGraylog("localhost:12201", "debug", "application_name"),
-		slogging.SetDefault(true),
-		slogging.WithSource(true),
-		slogging.SetLevel("debug"))
+	opts := slogging.NewOptions().InGraylog("localhost:12201", "application_name")
+	sl := slogging.NewLogger(opts)
 
     // Можем передать текущий сконфигурированный логгер
 	traceMW := sl.TraceMiddleware(l.Logger)
@@ -184,11 +171,8 @@ type amqpIface interface {
 }
 
 func main() {
-	l := slogging.NewLogger(
-		slogging.InGraylog("localhost:12201", "debug", "application_name"),
-		slogging.SetDefault(true),
-		slogging.WithSource(true),
-		slogging.SetLevel("debug"))
+	opts := slogging.NewOptions().InGraylog("localhost:12201", "application_name")
+	sl := slogging.NewLogger(opts)
 
 	var repo amqpIface
 
@@ -235,11 +219,8 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 }
 
 func main() {
-	l := slogging.NewLogger(
-		slogging.InGraylog("localhost:12201", "debug", "application_name"),
-		slogging.SetDefault(true),
-		slogging.WithSource(true),
-		slogging.SetLevel("debug"))
+	opts := slogging.NewOptions().InGraylog("localhost:12201", "application_name")
+	sl := slogging.NewLogger(opts)
 
 	lis, err := net.Listen("tcp", ":8080")
 	if err != nil {
