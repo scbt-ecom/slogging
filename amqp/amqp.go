@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/rabbitmq/amqp091-go"
 	"github.com/scbt-ecom/slogging"
-	"github.com/skbt-ecom/rabbitmq"
+	"github.com/scbt-ecom/rabbitmq"
 	"log/slog"
 )
 
