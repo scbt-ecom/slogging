@@ -11,7 +11,7 @@ require (
 	github.com/samber/slog-common v0.17.0
 	github.com/samber/slog-graylog/v2 v2.7.0
 	github.com/samber/slog-multi v1.2.1
-	github.com/scbt-ecom/rabbitmq v1.3.1
+	github.com/scbt-ecom/rabbitmq v1.3.2
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	google.golang.org/grpc v1.66.2
 )

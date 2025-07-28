@@ -71,23 +71,40 @@ func ResponseAttr(r *http.Response, start time.Time) []any {
 		return []any{}
 	}
 
-	var body []byte
-	if r.Body != nil {
-		body, _ = io.ReadAll(r.Body)
-		r.Body = io.NopCloser(bytes.NewBuffer(body))
+	respCopy := &http.Response{
+		Status:     r.Status,
+		StatusCode: r.StatusCode,
+		Request: &http.Request{
+			Method: r.Request.Method,
+			URL:    r.Request.URL,
+		},
 	}
 
-	authHeader := r.Header.Get("Authorization")
-	if authHeader != "" {
-		r.Header.Set("Authorization", checkHeaderAuth(authHeader))
+	if respCopy.Header != nil {
+		respCopy.Header = make(http.Header)
+		for k, v := range respCopy.Header {
+			respCopy.Header[k] = v
+		}
 	}
-	headers, _ := json.Marshal(r.Header)
+
+	var body []byte
+	if respCopy.Body != nil {
+		body, _ = io.ReadAll(r.Body)
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
+		respCopy.Body = io.NopCloser(bytes.NewBuffer(body))
+	}
+
+	authHeader := respCopy.Header.Get("Authorization")
+	if authHeader != "" {
+		respCopy.Header.Set("Authorization", checkHeaderAuth(authHeader))
+	}
+	headers, _ := json.Marshal(respCopy.Header)
 
 	duration := time.Since(start)
 	return getReqAttrsAsAny([]Attr{
-		slog.String("url", r.Request.URL.String()),
-		slog.String("method", r.Request.Method),
-		slog.Int("statusCode", r.StatusCode),
+		slog.String("url", respCopy.Request.URL.String()),
+		slog.String("method", respCopy.Request.Method),
+		slog.Int("statusCode", respCopy.StatusCode),
 		slog.String("headers", string(headers)),
 		slog.String("body", string(body)),
 		slog.Int64("duration", duration.Milliseconds()),
@@ -100,21 +117,34 @@ func RequestAttr(r *http.Request) []any {
 		return []any{}
 	}
 
+	reqCopy := &http.Request{
+		Method: r.Method,
+		URL:    r.URL,
+	}
+
+	if r.Header != nil {
+		reqCopy.Header = make(http.Header)
+		for k, v := range r.Header {
+			reqCopy.Header[k] = v
+		}
+	}
+
 	var body []byte
 	if r.Body != nil {
 		body, _ = io.ReadAll(r.Body)
-		r.Body = io.NopCloser(bytes.NewBuffer(body))
+		r.Body = io.NopCloser(bytes.NewBuffer(body)) // Восстанавливаем оригинальное тело
+		reqCopy.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 
-	authHeader := r.Header.Get("Authorization")
+	authHeader := reqCopy.Header.Get("Authorization")
 	if authHeader != "" {
-		r.Header.Set("Authorization", checkHeaderAuth(authHeader))
+		reqCopy.Header.Set("Authorization", checkHeaderAuth(authHeader))
 	}
-	headers, _ := json.Marshal(r.Header)
+	headers, _ := json.Marshal(reqCopy.Header)
 
 	return getReqAttrsAsAny([]Attr{
-		slog.String("method", r.Method),
-		slog.String("url", r.URL.String()),
+		slog.String("method", reqCopy.Method),
+		slog.String("url", reqCopy.URL.String()),
 		slog.String("headers", string(headers)),
 		slog.String("body", string(body)),
 	})
