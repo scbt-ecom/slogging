@@ -33,7 +33,7 @@
 ## Getting ##
 ```bash
 go env -w GONOPROXY=github.com/scbt-ecom/*
-go get github.com/scbt-ecom/slogging@v1.0.3
+go get github.com/scbt-ecom/slogging@v1.0.5
 ```
 
 ## Initialization ##
