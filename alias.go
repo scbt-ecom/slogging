@@ -80,7 +80,7 @@ func ResponseAttr(r *http.Response, start time.Time) []any {
 		},
 	}
 
-	if respCopy.Header != nil {
+	if r.Header != nil {
 		respCopy.Header = make(http.Header)
 		for k, v := range respCopy.Header {
 			respCopy.Header[k] = v
@@ -88,7 +88,7 @@ func ResponseAttr(r *http.Response, start time.Time) []any {
 	}
 
 	var body []byte
-	if respCopy.Body != nil {
+	if r.Body != nil {
 		body, _ = io.ReadAll(r.Body)
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 		respCopy.Body = io.NopCloser(bytes.NewBuffer(body))
@@ -132,7 +132,7 @@ func RequestAttr(r *http.Request) []any {
 	var body []byte
 	if r.Body != nil {
 		body, _ = io.ReadAll(r.Body)
-		r.Body = io.NopCloser(bytes.NewBuffer(body)) // Восстанавливаем оригинальное тело
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
 		reqCopy.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 
