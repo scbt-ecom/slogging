@@ -3,7 +3,6 @@ package slogging
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"golang.org/x/exp/constraints"
 	"io"
 	"log/slog"
@@ -71,40 +70,19 @@ func ResponseAttr(r *http.Response, start time.Time) []any {
 		return []any{}
 	}
 
-	respCopy := &http.Response{
-		Status:     r.Status,
-		StatusCode: r.StatusCode,
-		Request: &http.Request{
-			Method: r.Request.Method,
-			URL:    r.Request.URL,
-		},
-	}
-
-	if r.Header != nil {
-		respCopy.Header = make(http.Header)
-		for k, v := range respCopy.Header {
-			respCopy.Header[k] = v
-		}
-	}
-
 	var body []byte
 	if r.Body != nil {
 		body, _ = io.ReadAll(r.Body)
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
-		respCopy.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 
-	authHeader := respCopy.Header.Get("Authorization")
-	if authHeader != "" {
-		respCopy.Header.Set("Authorization", checkHeaderAuth(authHeader))
-	}
-	headers, _ := json.Marshal(respCopy.Header)
+	headers, _ := json.Marshal(r.Header)
 
 	duration := time.Since(start)
 	return getReqAttrsAsAny([]Attr{
-		slog.String("url", respCopy.Request.URL.String()),
-		slog.String("method", respCopy.Request.Method),
-		slog.Int("statusCode", respCopy.StatusCode),
+		slog.String("url", r.Request.URL.String()),
+		slog.String("method", r.Request.Method),
+		slog.Int("statusCode", r.StatusCode),
 		slog.String("headers", string(headers)),
 		slog.String("body", string(body)),
 		slog.Int64("duration", duration.Milliseconds()),
@@ -117,51 +95,47 @@ func RequestAttr(r *http.Request) []any {
 		return []any{}
 	}
 
-	reqCopy := &http.Request{
-		Method: r.Method,
-		URL:    r.URL,
-	}
-
-	if r.Header != nil {
-		reqCopy.Header = make(http.Header)
-		for k, v := range r.Header {
-			reqCopy.Header[k] = v
-		}
-	}
-
 	var body []byte
 	if r.Body != nil {
 		body, _ = io.ReadAll(r.Body)
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
-		reqCopy.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 
-	authHeader := reqCopy.Header.Get("Authorization")
-	if authHeader != "" {
-		reqCopy.Header.Set("Authorization", checkHeaderAuth(authHeader))
+	logHeaders := make(http.Header)
+	for k, v := range r.Header {
+		logHeaders[k] = v
 	}
-	headers, _ := json.Marshal(reqCopy.Header)
+
+	if authHeader := logHeaders.Get("Authorization"); authHeader != "" {
+		logHeaders.Set("Authorization", checkHeaderAuth(authHeader))
+	}
+
+	headers, _ := json.Marshal(logHeaders)
 
 	return getReqAttrsAsAny([]Attr{
-		slog.String("method", reqCopy.Method),
-		slog.String("url", reqCopy.URL.String()),
+		slog.String("method", r.Method),
+		slog.String("url", r.URL.String()),
 		slog.String("headers", string(headers)),
 		slog.String("body", string(body)),
 	})
 }
 
 func checkHeaderAuth(header string) string {
-	split := strings.Split(header, " ")
-	if len(split) != 2 {
-		return header
+	parts := strings.SplitN(header, " ", 2)
+	if len(parts) == 1 {
+		return maskToken(parts[0])
 	}
 
-	authData := split[1]
-	if len(authData) >= 2 {
-		authData = authData[len(authData)-2:]
-	}
+	scheme, data := parts[0], parts[1]
+	return scheme + " " + maskToken(data)
+}
 
-	return fmt.Sprintf("%s ***%s", split[0], authData)
+func maskToken(token string) string {
+	const mask = "***"
+	if len(token) <= 4 {
+		return mask
+	}
+	return token[:2] + mask + token[len(token)-2:]
 }
 
 func getReqAttrsAsAny(reqAttrs []Attr) []any {
